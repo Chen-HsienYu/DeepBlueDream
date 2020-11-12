@@ -1,3 +1,11 @@
+# command to manually play against StudentAI
+# python3 src/checkers-python/main.py {col} {row} {p} m {start_player (0 or 1)}
+# python3 src/checkers-python/main.py 7 7 2 m 0
+
+# command to test StudentAI against randomAI
+# python3 src/checkers-python/main.py {row} {column} {rows occupied by pieces} l {AI_1_path} {AI_2_path}
+# python3 src/checkers-python/main.py 7 7 2 l ~/DeepBlueDream/src/checkers-python/main.py ~/DeepBlueDream/Tools/Sample_AIs/Random_AI/main.py
+
 from random import randint
 from BoardClasses import Move
 from BoardClasses import Board
@@ -30,7 +38,6 @@ class StudentAI():
 
 
 
-##
 ### main function for the Monte Carlo Tree Search 
 ##def monte_carlo_tree_search(root): 
 ##	
