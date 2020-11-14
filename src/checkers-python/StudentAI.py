@@ -34,7 +34,7 @@ class StudentAI():
         move = moves[index][inner_index]
         self.board.make_move(move,self.color)
         return move
-
+'''
     def mcts(root): 
             while resources_left(time, computational power): 
                     leaf = traverse(root) 
@@ -71,3 +71,4 @@ class StudentAI():
     # node with highest number of visits 
     def best_child(node): 
             pick child with highest number of visits 
+'''
