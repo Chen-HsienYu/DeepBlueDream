@@ -57,9 +57,9 @@ class GameLogic:
 
     def _run(self, iterations, previous_games, fh=None):
         for i in range(iterations):
-            print('**********************', file=fh)        
+            print('\n\n\n**********************', file=fh)        
             print('Game #', i+previous_games+1,file=fh)
-            print('**********************', file=fh)
+            print('**********************\n\n\n', file=fh)
             self.ai_list = []
             self.ai_list.append(IOAI(self.col, self.row, self.p, ai_path=self.ai[0], time=self.timeout))
             self.ai_list.append(IOAI(self.col, self.row, self.p, ai_path=self.ai[1], time=self.timeout))

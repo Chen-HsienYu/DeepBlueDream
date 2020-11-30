@@ -1,14 +1,3 @@
-# NOTE: print() will only work in manual mode
-
-# module load python/3.5.2
-
-# TO MANUALLY PLAY AGAINST StudentAI:
-# python3 src/checkers-python/main.py {col} {row} {p} m {start_player (0 or 1)}
-# python3 src/checkers-python/main.py 7 7 2 m 0
-
-# TO TEST StudentAI AGAINST Random_AI:
-# python3 DeepBlueDream/src/checkers-python/main.py {row} {column} {rows occupied by pieces} l {AI_1_path} {AI_2_path}
-# python3 src/checkers-python/main.py 7 7 2 l Tools/Sample_AIs/Random_AI/main.py src/checkers-python/main.py
 
 from random import randint
 from BoardClasses import Move, Board
@@ -18,8 +7,11 @@ from math import sqrt, log
 from operator import itemgetter, attrgetter
 
 OPPONENT = {1:2, 2:1}
+MAX_PROCESSES = 1
+TIME_LIMIT = 2 # seconds per turn
+C_VAL = 0.7 # exploration constant for UCB
 
-def get_random_move(board, color):
+def get_random_move(board, color) -> Move:
     moves = board.get_all_possible_moves(color)
     index = randint(0, len(moves) - 1)
     inner_index = randint(0, len(moves[index]) - 1)
@@ -33,9 +25,23 @@ class StudentAI():
         self.board = Board(col, row, p)
         self.board.initialize_game()
         self.color = 2
-        self.time_limit = 5 # seconds per turn
+        self.mcts = None
+        
+        #start generating tree here???
+        if MAX_PROCESSES > 1:
+            print('start generating tree')
+        self.move_counter = 0
+        
 
-    def get_move(self, move):       
+    def get_move(self, move) -> Move:
+        '''
+        merge trees
+        prune tree with opponent move
+        stop sub processes
+        MCTS
+        start again right before returning move
+        '''
+        
         # Check if opponent gave a turn and execute it
         if len(move) != 0:
             self.board.make_move(move, OPPONENT[self.color])
@@ -47,14 +53,12 @@ class StudentAI():
             self.board.make_move(move_chosen, self.color)
             return move_chosen
         
-        
         ###TEMPORARY WORKAROUND###
-        if len(self.board.get_all_possible_moves(OPPONENT[self.color])) == 1:
-            move_chosen = get_random_move(self.board, self.color)
-            self.board.make_move(move_chosen, self.color)
-            return move_chosen
+#         if len(self.board.get_all_possible_moves(OPPONENT[self.color])) == 1:
+#             move_chosen = get_random_move(self.board, self.color)
+#             self.board.make_move(move_chosen, self.color)
+#             return move_chosen
         ###TEMPORARY WORKAROUND###
-
 
         # Check if only one move is possible
         moves = self.board.get_all_possible_moves(self.color)
@@ -62,62 +66,93 @@ class StudentAI():
             self.board.make_move(moves[0][0], self.color)
             return moves[0][0]
         
-        # Make a new root node and perform MCTS
-        self.root = GameTreeNode(self.board, self.color, None, None)        
-        move_chosen = self.mcts()
-        self.board.make_move(move_chosen, self.color)
+        # Make a new MCTS and perform search
+        root = TreeNode(self.board, self.color, None, None) 
+        self.mcts = MCTS(root)
+        move_chosen = self.mcts.search()
+        self.board.make_move(move_chosen, self.color)#update this to reuse tree
         return move_chosen
     
-    def mcts(self):
+
+            
+class MCTS():
+    def __init__(self, root):
+        self.root = root
+        
+    def search(self) -> Move:
         '''
         Performs monte carlo tree search until time runs out
         '''
-        timeout = time.time() + self.time_limit
+        timeout = time.time() + TIME_LIMIT
         
         while time.time() < timeout:
-            self.root.selection().simulate()
+            self.simulate(self.root.selection())
         
         return self.best_child()
+                                
+    def simulate(self, node) -> None:
+        '''
+        Create a copy of the board and simulate a game with random moves
+        
+        eventually add a basic heuristic...
+        '''
+        temp_board = deepcopy(node.board)
+        win_val = temp_board.is_win(node.color)
+        
+#         temp_board.show_board()
+#         print(win_val)
+        
+        # Switch to opponents color
+        temp_color = OPPONENT[node.color]
+        while (win_val == 0):
+            temp_move = get_random_move(temp_board, temp_color)
 
-    def best_child(self):
+            # execute random move
+            temp_board.make_move(temp_move, temp_color)
+            
+            # Update win value
+            win_val = temp_board.is_win(temp_color)
+            # Switch players
+            temp_color = OPPONENT[temp_color]
+
+        node.backpropogate(win_val)
+        return
+    
+    def best_child(self) -> Move:
         '''
         Return move with highest visit count
         '''
-        sorted_moves = sorted(self.root.children.items(), key=lambda x: x[1].visit_count, reverse=True)
+        sorted_moves = sorted(self.root.children.items(), key=lambda x: x[1].visit_count, reverse=True)   
         return sorted_moves[0][0]
-            
-class GameTreeNode():
-    c = 0.7 # exploration constant for UCB
+    
+class TreeNode():
     def __init__(self, board, color, move, parent):
         self.board = deepcopy(board)
         self.color = color
         self.parent = parent
-        
+         
         self.visit_count = 1 # change this?
         self.wins_for_parent = 0
         # execute nodes' first move
         if move != None:
             self.board.make_move(move, OPPONENT[self.color])
-        self._create_children()
-                    
-    def _create_children(self):#expand all
+        self.children = self._create_children()
+ 
+    def _create_children(self) -> 'list[TreeNode]':#expand all
         '''
         Create a dict with key=possible moves and value=None
         '''
-        self.children = dict()
+        children = dict()
         moves_list = self.board.get_all_possible_moves(self.color)
         for i in range(len(moves_list)):
             for j in range(len(moves_list[i])):
-                self.children[moves_list[i][j]] = None
-        return self.children
-
-    def selection(self):
+                children[moves_list[i][j]] = None
+        return children
+    
+    def selection(self) -> 'TreeNode':
         '''
-        Recursively traverses the tree to find a terminal node with the highest UCB value,
-        then expands a new unexplored node.
-        
-        
-        does not actually recursively do that, but searches root.children for highest ucb
+        Recursively traverses child nodes to find a terminal node with the highest UCB value,
+        then expands a new unexplored node.        
         '''
         if len(self.children) == 0:
 #             print('\nCHILDREN LEN == ZERO')
@@ -130,63 +165,35 @@ class GameTreeNode():
             return sorted_children[0].selection()
         for move, node in self.children.items():
             if node == None:
-                self.children[move] = GameTreeNode(self.board, OPPONENT[self.color], move, self)
+                self.children[move] = TreeNode(self.board, OPPONENT[self.color], move, self)
                 return self.children[move]
-            
-    def simulate(self):
-        '''
-        Create a copy of the board and simulate a game with random moves
-        
-        eventually add a basic heuristic...
-        '''
-        temp_board = deepcopy(self.board)
-        win_val = temp_board.is_win(self.color)
-        
-#         temp_board.show_board()
-#         print(win_val)
-        
-        # Switch to opponents color
-        temp_color = OPPONENT[self.color]
-        while (win_val == 0):
-            temp_move = get_random_move(temp_board, temp_color)
-
-            # execute random move
-            temp_board.make_move(temp_move, temp_color)
-            
-            # Update win value
-            win_val = temp_board.is_win(temp_color)
-            # Switch players
-            temp_color = OPPONENT[temp_color]
-
-        self.backpropogate(win_val)
-        return
-
-    def backpropogate(self, win_val):
+ 
+    def backpropogate(self, win_val) -> None:
         '''
         Update statistics
-        
+         
         must account for switching players
-        consider ties as half a win for grading (not for tournament)?
+        consider ties as half a win for grading?
         '''
         self.visit_count += 1
         if win_val == OPPONENT[self.color]:
             self.wins_for_parent += 1
 #       if win_val == -1:
 #           self.wins += 0.5
-        
+         
         if self.parent != None:
             self.parent.backpropogate(win_val)
         return
+     
+    def get_ucb(self) -> float:
+        return self.wins_for_parent/self.visit_count + C_VAL * sqrt(log(self.parent.visit_count)/self.visit_count)
     
-    def get_ucb(self):
-        return self.wins_for_parent/self.visit_count + GameTreeNode.c * sqrt(log(self.parent.visit_count)/self.visit_count)
-
         
 # REMOVE THIS BEFORE SUBMITTING #
-# if __name__ == '__main__':
-#     import os
-#     os.system('python3 main.py 7 7 2 l main.py ../../Tools/Sample_AIs/Random_AI/main.py')
-#     #os.system('python3 ../statistics/run.py 2')
+if __name__ == '__main__':
+    import os
+    os.system('python3 main.py 7 7 2 m main.py')
+    #os.system('python3 ../statistics/run.py 2')
 # REMOVE THIS BEFORE SUBMITTING #
 
 #         CODE FOR PICKING RANDOM MOVE
