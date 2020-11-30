@@ -7,11 +7,14 @@ from math import sqrt, log
 from operator import itemgetter, attrgetter
 
 OPPONENT = {1:2, 2:1}
-MAX_PROCESSES = 1
+MAX_PROCESSES = 1 # unused for now
 TIME_LIMIT = 2 # seconds per turn
 C_VAL = 0.7 # exploration constant for UCB
 
 def get_random_move(board, color) -> Move:
+    '''
+    Given a board state and color, returns a random move.
+    '''
     moves = board.get_all_possible_moves(color)
     index = randint(0, len(moves) - 1)
     inner_index = randint(0, len(moves[index]) - 1)
@@ -27,10 +30,9 @@ class StudentAI():
         self.color = 2
         self.mcts = None
         
-        #start generating tree here???
         if MAX_PROCESSES > 1:
             print('start generating tree')
-        self.move_counter = 0
+        self.move_counter = 0 # use for dynamically setting move timer
         
 
     def get_move(self, move) -> Move:
@@ -41,7 +43,6 @@ class StudentAI():
         MCTS
         start again right before returning move
         '''
-        
         # Check if opponent gave a turn and execute it
         if len(move) != 0:
             self.board.make_move(move, OPPONENT[self.color])
@@ -53,13 +54,6 @@ class StudentAI():
             self.board.make_move(move_chosen, self.color)
             return move_chosen
         
-        ###TEMPORARY WORKAROUND###
-#         if len(self.board.get_all_possible_moves(OPPONENT[self.color])) == 1:
-#             move_chosen = get_random_move(self.board, self.color)
-#             self.board.make_move(move_chosen, self.color)
-#             return move_chosen
-        ###TEMPORARY WORKAROUND###
-
         # Check if only one move is possible
         moves = self.board.get_all_possible_moves(self.color)
         if len(moves) == 1 and len(moves[0]) == 1:
@@ -73,15 +67,14 @@ class StudentAI():
         self.board.make_move(move_chosen, self.color)#update this to reuse tree
         return move_chosen
     
-
-            
 class MCTS():
     def __init__(self, root):
         self.root = root
         
     def search(self) -> Move:
         '''
-        Performs monte carlo tree search until time runs out
+        Performs Monte Carlo Tree Search until time runs out.
+        Returns the best move.
         '''
         timeout = time.time() + TIME_LIMIT
         
@@ -92,16 +85,14 @@ class MCTS():
                                 
     def simulate(self, node) -> None:
         '''
-        Create a copy of the board and simulate a game with random moves
+        Create a copy of the board and simulate a game with random moves.
+        Backpropogates the result at the end of the simulated game.
         
         eventually add a basic heuristic...
         '''
         temp_board = deepcopy(node.board)
         win_val = temp_board.is_win(node.color)
-        
-#         temp_board.show_board()
-#         print(win_val)
-        
+                
         # Switch to opponents color
         temp_color = OPPONENT[node.color]
         while (win_val == 0):
@@ -116,13 +107,17 @@ class MCTS():
             temp_color = OPPONENT[temp_color]
 
         node.backpropogate(win_val)
-        return
     
     def best_child(self) -> Move:
         '''
-        Return move with highest visit count
+        Return the move with highest visit count.
         '''
-        sorted_moves = sorted(self.root.children.items(), key=lambda x: x[1].visit_count, reverse=True)   
+        ###TEMPORARY WORKAROUND###
+        reverse = True
+        if len(self.root.board.get_all_possible_moves(OPPONENT[self.root.color])) == 1:
+            reverse = False
+        ###TEMPORARY WORKAROUND###
+        sorted_moves = sorted(self.root.children.items(), key=lambda x: x[1].visit_count, reverse=reverse)
         return sorted_moves[0][0]
     
 class TreeNode():
@@ -130,18 +125,22 @@ class TreeNode():
         self.board = deepcopy(board)
         self.color = color
         self.parent = parent
-         
         self.visit_count = 1 # change this?
         self.wins_for_parent = 0
-        # execute nodes' first move
+        
+        # Execute nodes' first move
         if move != None:
             self.board.make_move(move, OPPONENT[self.color])
         self.children = self._create_children()
  
     def _create_children(self) -> 'list[TreeNode]':#expand all
         '''
-        Create a dict with key=possible moves and value=None
+        Returns a dict where key=all possible moves, value=None.
         '''
+        # Not sure if these next 2 lines do anything        
+        if self.board.is_win(OPPONENT[self.color]) != 0:
+            return dict()
+
         children = dict()
         moves_list = self.board.get_all_possible_moves(self.color)
         for i in range(len(moves_list)):
@@ -155,10 +154,6 @@ class TreeNode():
         then expands a new unexplored node.        
         '''
         if len(self.children) == 0:
-#             print('\nCHILDREN LEN == ZERO')
-#             print('WIN VALUE ==', self.board.is_win(self.color))
-#             print('OP WIN VALUE ==', self.board.is_win(OPPONENT[self.color]))
-#             self.board.show_board()
             return self
         if None not in self.children.values():
             sorted_children = sorted(self.children.values(), key=lambda x: x.get_ucb(), reverse=True)
@@ -183,9 +178,14 @@ class TreeNode():
          
         if self.parent != None:
             self.parent.backpropogate(win_val)
-        return
      
     def get_ucb(self) -> float:
+        '''
+        possibly reverse recursive backpropogate,
+        then update ucb in backpropogate function?
+        
+        is that more efficient?
+        '''
         return self.wins_for_parent/self.visit_count + C_VAL * sqrt(log(self.parent.visit_count)/self.visit_count)
     
         
@@ -195,40 +195,3 @@ if __name__ == '__main__':
     os.system('python3 main.py 7 7 2 m main.py')
     #os.system('python3 ../statistics/run.py 2')
 # REMOVE THIS BEFORE SUBMITTING #
-
-#         CODE FOR PICKING RANDOM MOVE
-#         moves = self.board.get_all_possible_moves(self.color)
-#         index = randint(0, len(moves) - 1)
-#         inner_index = randint(0, len(moves[index]) - 1)
-#         move = moves[index][inner_index]
-#         self.board.make_move(move, self.color)
-#         return move
-
-# MONTE CARLO TREE SEARCH PSEUDO CODE
-# def monte_carlo_tree_search(root):
-#     while resources_left(time, computational power):
-#         leaf = traverse(root) # leaf = unvisited node
-#         simulation_result = rollout(leaf)
-#         backpropagate(leaf, simulation_result)
-#     return best_child(root)
-# 
-# def traverse(node):
-#     while fully_expanded(node):
-#         node = best_uct(node)
-#     return pick_univisted(node.children) or node # in case no children are present / node is terminal
-# 
-# def rollout(node): # aka simulate
-#     while non_terminal(node):
-#         node = rollout_policy(node)
-#     return result(node)
-# 
-# def rollout_policy(node): # aka pick random moves
-#     return pick_random(node.children)
-# 
-# def backpropagate(node, result):
-#    if is_root(node) return 
-#    node.stats = update_stats(node, result)
-#    backpropagate(node.parent)
-# 
-# def best_child(node):
-#     pick child with highest number of visits

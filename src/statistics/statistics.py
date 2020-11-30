@@ -4,12 +4,6 @@ sys.path.append("./AI_Extensions/")
 from AI_Extensions import *
 from collections import defaultdict
 #import time
-
-# Running this file with no arguments will play one game with the default settings
-# TO RUN WITH DIFFERENT SETTINGS:
-# python3 DeepBlueDream/src/statistics/statistics.py {iterations}
-# python3 DeepBlueDream/src/statistics/statistics.py {row} {column} {rows occupied by pieces} {iterations}
-# python3 DeepBlueDream/src/statistics/statistics.py {row} {column} {rows occupied by pieces} {iterations} {AI_1_path} {AI_2_path}
         
 class GameLogic:
     def __init__(self,col=7,row=7,p=2,ai1='../checkers-python/main.py',ai2='../../Tools/Sample_AIs/Random_AI/main.py'):
