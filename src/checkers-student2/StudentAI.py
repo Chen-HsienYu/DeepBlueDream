@@ -1,8 +1,35 @@
 from random import randint
 from BoardClasses import Move
 from BoardClasses import Board
-#The following part should be completed by students.
-#Students can modify anything except the class name and exisiting functions and varibles.
+
+class node:
+    def __init__(self,value=None,parent=None,children=list()):
+        self.value = value
+        self.parent = parent
+        self.children = list(children)
+        
+    def addChild(self,value):
+        self.children.append(node(value=value,parent=self,children=list()))
+        
+    def setChildren(self,nodes):
+        self.children = list(nodes)
+        for n in self.children:
+            n.parent = self
+
+    def clearChildren(self):
+        del self.children
+        self.children = list()
+
+    def isHeadNode(self):
+        return False
+
+class headNode(node):
+    def __init__(self,value=None,children=list()):
+        super().__init__(value,None,children)
+        
+    def isHeadNode(self):
+        return True
+
 class StudentAI():
 
     def __init__(self,col,row,p):
