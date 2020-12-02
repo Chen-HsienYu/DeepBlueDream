@@ -6,7 +6,7 @@ from collections import defaultdict
 #import time
         
 class GameLogic:
-    def __init__(self,col=7,row=7,p=2,ai1='../checkers-python/main.py',ai2='../../Tools/Sample_AIs/Random_AI/main.py'):
+    def __init__(self,col=7,row=7,p=2,ai1='../checkers-python/main.py',ai2='../../Tools/Sample_AIs/Poor_AI/main.py'):
         self.col = col
         self.row = row
         self.p = p
@@ -14,7 +14,6 @@ class GameLogic:
         self.timeout = 60*8
         self.win_stats = defaultdict(int)
         self.color_name = {1:'(black)', 2:'(white)'}   
-        #self.time_stats = dict()
 
     def run(self,iterations, fh=None):
         '''
@@ -31,7 +30,6 @@ class GameLogic:
             game._switch_player_order()
             self._run(iterations//2, iterations//2)        
                 
-        #open file with unique name here
         print('**********************', file=fh)
         print('columns   :', self.col, file=fh)
         print('rows      :', self.row, file=fh)
@@ -121,6 +119,7 @@ class GameLogic:
         return num
 
 if __name__ == "__main__":
+    # Create txt file with unique name (based on date/time) for storing results
     iterations = 1
     
     if len(sys.argv) == 1:
