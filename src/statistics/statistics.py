@@ -5,8 +5,13 @@ from AI_Extensions import *
 from collections import defaultdict
 #import time
         
+student = '../checkers-python/main.py'
+average = '../../Tools/Sample_AIs/Average_AI/main.py'
+good = '../../Tools/Sample_AIs/Good_AI/main.py'
+no_heuristic = '../no-heuristic/main.py'
+
 class GameLogic:
-    def __init__(self,col=7,row=7,p=2,ai1='../checkers-python/main.py',ai2='../../Tools/Sample_AIs/Poor_AI/main.py'):
+    def __init__(self, col=7, row=7, p=2, ai1=student, ai2=no_heuristic):
         self.col = col
         self.row = row
         self.p = p
@@ -22,9 +27,11 @@ class GameLogic:
         Prints the results of all games at the end.
         '''
         if iterations == 1:
+            self.total_iterations = 1
             self._run(1, 0)
         else:
             iterations = self.check_even(iterations)
+            self.total_iterations = iterations
         
             self._run(iterations//2, 0)
             game._switch_player_order()
@@ -39,8 +46,6 @@ class GameLogic:
         print('AI #2     :', self.ai[1], file=fh)
         print('**********************', file=fh)
         for name, wins in self.win_stats.items():
-            if name == -1:
-                name = 'TIE GAME'
             print(name, file=fh)
             print('total wins:', wins, file=fh)
             print('win %     :', round(wins*100.0/iterations, 2), file=fh)
@@ -49,9 +54,9 @@ class GameLogic:
 
     def _run(self, iterations, previous_games, fh=None):
         for i in range(iterations):
-            print('\n\n\n**********************', file=fh)        
-            print('Game #', i+previous_games+1,file=fh)
-            print('**********************\n\n\n', file=fh)
+            print('\n****************************************************************************************', file=fh)        
+            print('Game #', i+previous_games+1, '/', self.total_iterations, file=fh)
+            print('****************************************************************************************\n', file=fh)
             self.ai_list = []
             self.ai_list.append(IOAI(self.col, self.row, self.p, ai_path=self.ai[0], time=self.timeout))
             self.ai_list.append(IOAI(self.col, self.row, self.p, ai_path=self.ai[1], time=self.timeout))
@@ -104,6 +109,9 @@ class GameLogic:
         for AI in self.ai_list:
             if type(AI) is IOAI:
                 AI.close()
+                
+        if winPlayer == -1:
+            return 'TIE GAME'
         return self.ai[winPlayer-1]
     
     def _switch_player_order(self):

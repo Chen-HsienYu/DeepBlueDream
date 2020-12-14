@@ -8,7 +8,7 @@ from math import sqrt, log
 OPPONENT = {1:2, 2:1}
 TIME_LIMIT = 9 # seconds per turn
 C_VAL = sqrt(2) # exploration constant for UCB
-SIMULATION_DEPTH = 70 # max moves for simulated games
+SIMULATION_DEPTH = -1 # max moves for simulated games
 
 def get_random_move(board, color) -> Move:
     '''
