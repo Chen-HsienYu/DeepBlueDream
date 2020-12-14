@@ -1,14 +1,14 @@
 from random import randint
 from BoardClasses import Move, Board
-import time
+from time import time
 from copy import deepcopy
 from math import sqrt, log
-#from operator import itemgetter, attrgetter
+from operator import attrgetter#, itemgetter
 
 OPPONENT = {1:2, 2:1}
 TIME_LIMIT = 9 # seconds per turn
 C_VAL = sqrt(2) # exploration constant for UCB
-SIMULATION_DEPTH = 70 # max moves for simulated games
+SIMULATION_DEPTH = 60 # max moves for simulated games
 
 def get_random_move(board, color) -> Move:
     '''
@@ -28,17 +28,20 @@ class StudentAI():
         self.board.initialize_game()
         self.color = 2
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
+        
+        self.total_time_remaining = 8 * 60 - 1
+        
 #         self.move_counter = 0
-#         self.total_time = 8 * 60 - 1
+
         
     def get_move(self, move) -> Move:
         '''
-        merge trees
         prune tree with opponent move
-        stop sub processes
         MCTS
-        start again right before returning move
         '''
+        # Start timer
+        start_time = time()
+        
         # Check if opponent gave a turn and execute it
         if len(move) != 0:
             self.play_move(move, OPPONENT[self.color])
@@ -46,10 +49,11 @@ class StudentAI():
         else:
             self.color = 1
             self.mcts.root = TreeNode(self.board, self.color, None, None)
-            # hardcode in popular opening moves here???
-            move_chosen = get_random_move(self.board, self.color)
-            self.play_move(move_chosen, self.color)
-            return move_chosen
+
+            moves = self.board.get_all_possible_moves(self.color)
+            first_move = moves[0][1]
+            self.play_move(first_move, self.color)
+            return first_move
         
         # Check if only one move is possible
         moves = self.board.get_all_possible_moves(self.color)
@@ -59,6 +63,10 @@ class StudentAI():
         
         move_chosen = self.mcts.search()
         self.play_move(move_chosen, self.color)
+        
+        # Get time stamp and deduct from total
+        self.total_time_remaining += time() - start_time
+    
         return move_chosen
     
     def play_move(self, move, color):
@@ -85,9 +93,9 @@ class MCTS():
         Performs Monte Carlo Tree Search until time runs out.
         Returns the best move.
         '''
-        timeout = time.time() + TIME_LIMIT
+        timeout = time() + TIME_LIMIT
                 
-        while time.time() < timeout:
+        while time() < timeout:
             self.simulate(self.selection(self.root))
 
         return self.best_child()
@@ -100,7 +108,7 @@ class MCTS():
         if len(node.children) == 0:
             return node
         if None not in node.children.values():
-            sorted_children = sorted(node.children.values(), key=lambda x: x.get_ucb(), reverse=True)
+            sorted_children = sorted(node.children.values(), key=attrgetter('ucb_value'), reverse=True)
             return self.selection(sorted_children[0])
         for move, child in node.children.items():
             if child is None:
@@ -125,24 +133,23 @@ class MCTS():
 
         # reorder these to short circuit most common
         if not win_val:
-            win_for_parent = -self.get_heuristic(temp_board, node.color)#not sure if negative is necessary
+            win_for_parent = -self.get_heuristic(temp_board, node.color)
         elif win_val == OPPONENT[node.color]:
             win_for_parent = 1
         elif win_val == node.color:
             win_for_parent = -1
         elif win_val == -1:
             win_for_parent = 0
-        else:
-            win_for_parent = 'error'
             
         node.backpropogate(win_for_parent)
     
     def best_child(self) -> Move:
         '''
         Return the move with highest visit count.
-        
-        TODO: account for child nodes that are None b/c low on time
         '''
+#         if None in self.root.children.values():
+#             return get_random_move(self.root.board, self.root.color)
+
         sorted_moves = sorted(self.root.children.items(), key=lambda x: x[1].visit_count, reverse=True)
         return sorted_moves[0][0]
     
@@ -228,6 +235,7 @@ class TreeNode():
         self.parent = parent
         self.visit_count = 1 # change this to zero?
         self.wins_for_parent = 0
+        self.ucb_value = 0
         
         # Execute nodes' first move
         if move is not None:
@@ -258,25 +266,19 @@ class TreeNode():
         '''
         if self.parent:
             self.parent.backpropogate(-win_for_parent)
-        
-        if win_for_parent > 0:
-            self.wins_for_parent += win_for_parent
-        elif not win_for_parent:
-            self.wins_for_parent += 0.5
-                 
-        self.visit_count += 1
             
-        # add UCB here
-        
-     
-    def get_ucb(self) -> float:
-        '''
-        Returns UCB value.
-        '''
-        return self.wins_for_parent/self.visit_count + C_VAL * sqrt(log(self.parent.visit_count)/self.visit_count)
+            self.visit_count += 1
+            
+            if win_for_parent > 0:
+                self.wins_for_parent += win_for_parent
+            elif not win_for_parent:
+                self.wins_for_parent += 0.5
+                     
+            # calculate UCB value
+            self.ucb_value = self.wins_for_parent/self.visit_count + C_VAL * sqrt(log(self.parent.visit_count)/self.visit_count)
         
 # REMOVE THIS BEFORE SUBMITTING #
-if __name__ == '__main__':
-    import os
-    os.system('python3 main.py 7 7 2 m main.py')
+# if __name__ == '__main__':
+#     import os
+#     os.system('python3 main.py 7 7 2 m main.py')
 # REMOVE THIS BEFORE SUBMITTING #

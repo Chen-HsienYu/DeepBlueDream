@@ -18,7 +18,8 @@ class GameLogic:
         self.ai = (ai1, ai2)
         self.timeout = 60*8
         self.win_stats = defaultdict(int)
-        self.color_name = {1:'(black)', 2:'(white)'}   
+        self.color_name = {1:'(black)', 2:'(white)'}
+        self.move_counts = list()
 
     def run(self,iterations, fh=None):
         '''
@@ -50,17 +51,27 @@ class GameLogic:
             print('total wins:', wins, file=fh)
             print('win %     :', round(wins*100.0/iterations, 2), file=fh)
             print(file=fh)
+        print('avg moves :', sum(self.move_counts)/len(self.move_counts), file=fh)
         print('**********************', file=fh)
 
     def _run(self, iterations, previous_games, fh=None):
         for i in range(iterations):
-            print('\n****************************************************************************************', file=fh)        
+            if i+previous_games+1 != 1:
+                print('\n****************************************************************************************', file=fh)
+                for name, wins in self.win_stats.items():
+                    print(name, file=fh)
+                    print('total wins:', wins, file=fh)
+                    print('win %     :', round(wins*100.0/iterations, 2), file=fh)
+                    print(file=fh)
+                print('avg moves :', sum(self.move_counts)/len(self.move_counts), file=fh)
+
+            print('****************************************************************************************', file=fh)
             print('Game #', i+previous_games+1, '/', self.total_iterations, file=fh)
             print('****************************************************************************************\n', file=fh)
             self.ai_list = []
             self.ai_list.append(IOAI(self.col, self.row, self.p, ai_path=self.ai[0], time=self.timeout))
             self.ai_list.append(IOAI(self.col, self.row, self.p, ai_path=self.ai[1], time=self.timeout))
-            self.win_stats[self.gameloop(fh)] += 1         
+            self.win_stats[self.gameloop(fh)] += 1     
 
     def gameloop(self,fh=None):
         player = 1
@@ -69,7 +80,11 @@ class GameLogic:
         board = Board(self.col,self.row,self.p)
         board.initialize_game()
         board.show_board(fh)
+        
+        move_count = -1
         while True:
+            move_count += 1
+            
             print(self.ai[player-1],self.color_name[player],'is thinking...',file=fh)
             try:
                 move = self.ai_list[player-1].get_move(move)
@@ -110,6 +125,9 @@ class GameLogic:
             if type(AI) is IOAI:
                 AI.close()
                 
+        print('move count:', move_count, file=fh)
+        self.move_counts.append(move_count)
+        
         if winPlayer == -1:
             return 'TIE GAME'
         return self.ai[winPlayer-1]
