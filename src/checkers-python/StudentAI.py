@@ -6,7 +6,6 @@ from math import sqrt, log
 from operator import attrgetter#, itemgetter
 
 OPPONENT = {1:2, 2:1}
-TIME_LIMIT = 9 # seconds per turn
 C_VAL = sqrt(2) # exploration constant for UCB
 SIMULATION_DEPTH = 60 # max moves for simulated games
 
@@ -28,11 +27,8 @@ class StudentAI():
         self.board.initialize_game()
         self.color = 2
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
-        
-        self.total_time_remaining = 8 * 60 - 1
-        
-#         self.move_counter = 0
-
+        self.total_time_remaining = 479
+        self.time_divisor = 0.75 * row * col
         
     def get_move(self, move) -> Move:
         '''
@@ -61,7 +57,9 @@ class StudentAI():
             self.play_move(moves[0][0], self.color)
             return moves[0][0]        
         
-        move_chosen = self.mcts.search()
+        # set up time limit
+        time_limit = self.total_time_remaining / self.time_divisor
+        move_chosen = self.mcts.search(time_limit)
         self.play_move(move_chosen, self.color)
         
         # Get time stamp and deduct from total
@@ -88,12 +86,12 @@ class MCTS():
     def __init__(self, root):
         self.root = root
           
-    def search(self) -> Move:
+    def search(self, time_limit) -> Move:
         '''
         Performs Monte Carlo Tree Search until time runs out.
         Returns the best move.
         '''
-        timeout = time() + TIME_LIMIT
+        timeout = time() + time_limit
                 
         while time() < timeout:
             self.simulate(self.selection(self.root))

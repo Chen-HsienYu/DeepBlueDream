@@ -6,8 +6,8 @@ from math import sqrt, log
 from operator import attrgetter#, itemgetter
 
 OPPONENT = {1:2, 2:1}
-TIME_LIMIT = 9 # seconds per turn
 C_VAL = sqrt(2) # exploration constant for UCB
+
 
 def get_random_move(board, color) -> Move:
     '''
@@ -29,7 +29,6 @@ class StudentAI():
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
         self.total_time_remaining = 479
         self.time_divisor = 0.75 * row * col
-
         
     def get_move(self, move) -> Move:
         '''

@@ -18,7 +18,7 @@ class GameLogic:
         self.ai = (ai1, ai2)
         self.timeout = 60*8
         self.win_stats = defaultdict(int)
-        self.color_name = {1:'(black)', 2:'(white)'}
+        self.color_name = {1:'(B)', 2:'(W)'}
         self.move_counts = list()
 
     def run(self,iterations, fh=None):
@@ -27,41 +27,40 @@ class GameLogic:
         Switches players halfway through.
         Prints the results of all games at the end.
         '''
-        if iterations == 1:
+        if iterations < 2:
             self.total_iterations = 1
             self._run(1, 0)
         else:
-            iterations = self.check_even(iterations)
-            self.total_iterations = iterations
+            self.total_iterations = self.check_even(iterations)
         
-            self._run(iterations//2, 0)
+            self._run(self.total_iterations//2, 0)
             game._switch_player_order()
-            self._run(iterations//2, iterations//2)        
+            self._run(self.total_iterations//2, self.total_iterations//2)  
                 
         print('**********************', file=fh)
         print('columns   :', self.col, file=fh)
         print('rows      :', self.row, file=fh)
         print('p         :', self.p, file=fh)
-        print('iterations:', iterations, file=fh)
+        print('iterations:', self.total_iterations, file=fh)
         print('AI #1     :', self.ai[0], file=fh)
         print('AI #2     :', self.ai[1], file=fh)
         print('**********************', file=fh)
         for name, wins in self.win_stats.items():
             print(name, file=fh)
             print('total wins:', wins, file=fh)
-            print('win %     :', round(wins*100.0/iterations, 2), file=fh)
+            print('win %     :', round(wins*100.0/self.total_iterations, 2), file=fh)
             print(file=fh)
         print('avg moves :', sum(self.move_counts)/len(self.move_counts), file=fh)
         print('**********************', file=fh)
 
     def _run(self, iterations, previous_games, fh=None):
         for i in range(iterations):
-            if i+previous_games+1 != 1:
+            if i+previous_games != 0:
                 print('\n****************************************************************************************', file=fh)
                 for name, wins in self.win_stats.items():
                     print(name, file=fh)
                     print('total wins:', wins, file=fh)
-                    print('win %     :', round(wins*100.0/iterations, 2), file=fh)
+                    print('win %     :', round(wins*100.0/(i+previous_games), 2), file=fh)
                     print(file=fh)
                 print('avg moves :', sum(self.move_counts)/len(self.move_counts), file=fh)
 
@@ -81,11 +80,11 @@ class GameLogic:
         board.initialize_game()
         board.show_board(fh)
         
-        move_count = -1
+        move_count = 0
         while True:
             move_count += 1
+            print(move_count, self.color_name[player], self.ai[player-1][3:-8],'is thinking...',file=fh)
             
-            print(self.ai[player-1],self.color_name[player],'is thinking...',file=fh)
             try:
                 move = self.ai_list[player-1].get_move(move)
             except:
