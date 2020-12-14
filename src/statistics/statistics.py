@@ -12,7 +12,7 @@ average = '../../Tools/Sample_AIs/Average_AI/main.py'
 good = '../../Tools/Sample_AIs/Good_AI/main.py'
 
 class GameLogic:
-    def __init__(self, col=7, row=7, p=2, ai1=random, ai2=random):
+    def __init__(self, col=7, row=7, p=2, ai1=student, ai2=no_heuristic):
         self.col = col
         self.row = row
         self.p = p
