@@ -6,12 +6,13 @@ from collections import defaultdict
 #import time
         
 student = '../checkers-python/main.py'
+no_heuristic = '../no-heuristic/main.py'
+random = '../../Tools/Sample_AIs/Random_AI/main.py'
 average = '../../Tools/Sample_AIs/Average_AI/main.py'
 good = '../../Tools/Sample_AIs/Good_AI/main.py'
-no_heuristic = '../no-heuristic/main.py'
 
 class GameLogic:
-    def __init__(self, col=7, row=7, p=2, ai1=student, ai2=no_heuristic):
+    def __init__(self, col=7, row=7, p=2, ai1=random, ai2=random):
         self.col = col
         self.row = row
         self.p = p
@@ -29,13 +30,13 @@ class GameLogic:
         '''
         if iterations < 2:
             self.total_iterations = 1
-            self._run(1, 0)
+            self._run(1, 0, fh)
         else:
             self.total_iterations = self.check_even(iterations)
         
-            self._run(self.total_iterations//2, 0)
+            self._run(self.total_iterations//2, 0, fh)
             game._switch_player_order()
-            self._run(self.total_iterations//2, self.total_iterations//2)  
+            self._run(self.total_iterations//2, self.total_iterations//2, fh)  
                 
         print('**********************', file=fh)
         print('columns   :', self.col, file=fh)
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     
     if len(sys.argv) == 1:
         game = GameLogic()      
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 2:            
         iterations = int(sys.argv[1])
         game = GameLogic()
     if len(sys.argv) == 5:
@@ -166,5 +167,14 @@ if __name__ == "__main__":
         ai1_filepath = sys.argv[5]
         ai2_filepath = sys.argv[6]
         game = GameLogic(row, col, p, ai1_filepath, ai2_filepath)
-
-    game.run(iterations)
+    
+    if len(sys.argv) == 3:      
+        iterations = int(sys.argv[1])      
+        filename = sys.argv[2]
+        
+        game = GameLogic()
+        with open('data/'+filename, 'w') as f:
+            game.run(iterations, f)
+    else:
+        game.run(iterations)
+        
