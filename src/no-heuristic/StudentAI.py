@@ -111,7 +111,6 @@ class MCTS():
                 temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
                 win_val = temp_board.is_win(temp_color)
                 temp_color = OPPONENT[temp_color]
-                depth_limit -= 1
     
             # reorder these to short circuit most common
             if win_val == OPPONENT[node.color]:
