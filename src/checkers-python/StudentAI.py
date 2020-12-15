@@ -6,9 +6,6 @@ from math import sqrt, log
 from operator import attrgetter#, itemgetter
 
 OPPONENT = {1:2, 2:1}
-C_VAL = sqrt(2) # exploration constant for UCB
-SIMULATION_DEPTH = 60 # max moves for simulated games
-INITIAL_TIME_DIVISOR_C = 0.5
 
 def get_random_move(board, color) -> Move:
     '''
@@ -29,7 +26,7 @@ class StudentAI():
         self.color = 2
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
         self.total_time_remaining = 479
-        self.time_divisor = row * col * INITIAL_TIME_DIVISOR_C
+        self.time_divisor = row * col * 0.5
         self.timed_move_count = 2
         
     def get_move(self, move) -> Move:
@@ -107,7 +104,7 @@ class MCTS():
             temp_board = deepcopy(node.board)
             temp_color = node.color
             win_val = temp_board.is_win(OPPONENT[temp_color])
-            depth_limit = SIMULATION_DEPTH
+            depth_limit = 60
             
             while not win_val and depth_limit:
                 temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
@@ -143,34 +140,6 @@ class MCTS():
             if child is None:
                 node.children[move] = TreeNode(node.board, OPPONENT[node.color], move, node)
                 return node.children[move]
-                                
-#     def simulate(self, node) -> None:
-#         '''
-#         Create a copy of the board and simulate a game with random moves.
-#         Backpropogates the result at the end of the simulated game.
-#         '''
-#         temp_board = deepcopy(node.board)
-#         temp_color = node.color
-#         win_val = temp_board.is_win(OPPONENT[temp_color])
-#         depth_limit = SIMULATION_DEPTH
-#         
-#         while not win_val and depth_limit:
-#             temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
-#             win_val = temp_board.is_win(temp_color)
-#             temp_color = OPPONENT[temp_color]
-#             depth_limit -= 1
-# 
-#         # reorder these to short circuit most common
-#         if not win_val:
-#             win_for_parent = -self.get_heuristic(temp_board, node.color)
-#         elif win_val == OPPONENT[node.color]:
-#             win_for_parent = 1
-#         elif win_val == node.color:
-#             win_for_parent = -1
-#         elif win_val == -1:
-#             win_for_parent = 0
-#             
-#         node.backpropogate(win_for_parent)
     
     def best_child(self) -> Move:
         '''
@@ -262,29 +231,21 @@ class TreeNode():
         self.board = deepcopy(board)
         self.color = color
         self.parent = parent
-        self.visit_count = 1 # change this to zero?
+        self.visit_count = 1
         self.wins_for_parent = 0
         self.ucb_value = 0
         
         # Execute nodes' first move
         if move is not None:
             self.board.make_move(move, OPPONENT[self.color])
-        self.children = self._create_children()
 
-    def _create_children(self) -> 'list[TreeNode]':
-        '''
-        Returns a dict where key=all possible moves, value=None.
-        '''
-        children = dict()
-        # If game is already over, do not create children        
-        if self.board.is_win(OPPONENT[self.color]) != 0:
-            return children
-
-        moves_list = self.board.get_all_possible_moves(self.color)
-        for i in range(len(moves_list)):
-            for j in range(len(moves_list[i])):
-                children[moves_list[i][j]] = None
-        return children
+        # Only create children if game is already over     
+        self.children = dict()
+        if self.board.is_win(OPPONENT[self.color]) == 0:
+            moves_list = self.board.get_all_possible_moves(self.color)
+            for i in range(len(moves_list)):
+                for j in range(len(moves_list[i])):
+                    self.children[moves_list[i][j]] = None
  
     def backpropogate(self, win_for_parent) -> None:
         '''
@@ -304,7 +265,7 @@ class TreeNode():
                 self.wins_for_parent += 0.5
                      
             # calculate UCB value
-            self.ucb_value = self.wins_for_parent/self.visit_count + C_VAL * sqrt(log(self.parent.visit_count)/self.visit_count)
+            self.ucb_value = self.wins_for_parent/self.visit_count + sqrt(2)*sqrt(log(self.parent.visit_count)/self.visit_count)
         
 # REMOVE THIS BEFORE SUBMITTING #
 # if __name__ == '__main__':
