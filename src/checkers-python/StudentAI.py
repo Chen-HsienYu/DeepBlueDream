@@ -59,9 +59,12 @@ class StudentAI():
         
         # set up time limit
         time_limit = self.total_time_remaining / self.time_divisor
+        
+        # MCTS
         move_chosen = self.mcts.search(time_limit)
         self.play_move(move_chosen, self.color)
         
+        # decrement time
         self.time_divisor -= 0.25
         self.total_time_remaining -= time() - start_time
         
