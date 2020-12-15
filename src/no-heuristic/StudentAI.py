@@ -7,7 +7,7 @@ from operator import attrgetter#, itemgetter
 
 OPPONENT = {1:2, 2:1}
 C_VAL = sqrt(2) # exploration constant for UCB
-
+SIMULATION_DEPTH = 60 # max moves for simulated games
 
 def get_random_move(board, color) -> Move:
     '''
@@ -28,7 +28,7 @@ class StudentAI():
         self.color = 2
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
         self.total_time_remaining = 479
-        self.time_divisor = 0.75 * row * col
+        self.time_divisor = row * col * 0.75
         
     def get_move(self, move) -> Move:
         '''
@@ -55,16 +55,16 @@ class StudentAI():
         moves = self.board.get_all_possible_moves(self.color)
         if len(moves) == 1 and len(moves[0]) == 1:
             self.play_move(moves[0][0], self.color)
-            return moves[0][0]        
+            return moves[0][0]
         
         # set up time limit
         time_limit = self.total_time_remaining / self.time_divisor
         move_chosen = self.mcts.search(time_limit)
         self.play_move(move_chosen, self.color)
         
-        # Get time stamp and deduct from total
-        self.total_time_remaining += time() - start_time
-    
+        self.time_divisor -= 0.25
+        self.total_time_remaining -= time() - start_time
+        
         return move_chosen
     
     def play_move(self, move, color):
@@ -94,7 +94,31 @@ class MCTS():
         timeout = time() + time_limit
                 
         while time() < timeout:
-            self.simulate(self.selection(self.root))
+            # select node from the tree
+            node = self.selection(self.root)
+            # simulate outcome of the game
+            temp_board = deepcopy(node.board)
+            temp_color = node.color
+            win_val = temp_board.is_win(OPPONENT[temp_color])
+            depth_limit = SIMULATION_DEPTH
+            
+            while not win_val and depth_limit:
+                temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
+                win_val = temp_board.is_win(temp_color)
+                temp_color = OPPONENT[temp_color]
+                depth_limit -= 1
+    
+            # reorder these to short circuit most common
+            if not win_val:
+                win_for_parent = -self.get_heuristic(temp_board, node.color)
+            elif win_val == OPPONENT[node.color]:
+                win_for_parent = 1
+            elif win_val == node.color:
+                win_for_parent = -1
+            elif win_val == -1:
+                win_for_parent = 0
+            # update values in tree
+            node.backpropogate(win_for_parent)
 
         return self.best_child()
     
@@ -113,29 +137,33 @@ class MCTS():
                 node.children[move] = TreeNode(node.board, OPPONENT[node.color], move, node)
                 return node.children[move]
                                 
-    def simulate(self, node) -> None:
-        '''
-        Create a copy of the board and simulate a game with random moves.
-        Backpropogates the result at the end of the simulated game.
-        '''
-        temp_board = deepcopy(node.board)
-        temp_color = node.color
-        win_val = temp_board.is_win(OPPONENT[temp_color])
-        
-        while not win_val:
-            temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
-            win_val = temp_board.is_win(temp_color)
-            temp_color = OPPONENT[temp_color]
-
-        # reorder these to short circuit most common
-        if win_val == OPPONENT[node.color]:
-            win_for_parent = 1
-        elif win_val == node.color:
-            win_for_parent = -1
-        elif win_val == -1:
-            win_for_parent = 0
-            
-        node.backpropogate(win_for_parent)
+#     def simulate(self, node) -> None:
+#         '''
+#         Create a copy of the board and simulate a game with random moves.
+#         Backpropogates the result at the end of the simulated game.
+#         '''
+#         temp_board = deepcopy(node.board)
+#         temp_color = node.color
+#         win_val = temp_board.is_win(OPPONENT[temp_color])
+#         depth_limit = SIMULATION_DEPTH
+#         
+#         while not win_val and depth_limit:
+#             temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
+#             win_val = temp_board.is_win(temp_color)
+#             temp_color = OPPONENT[temp_color]
+#             depth_limit -= 1
+# 
+#         # reorder these to short circuit most common
+#         if not win_val:
+#             win_for_parent = -self.get_heuristic(temp_board, node.color)
+#         elif win_val == OPPONENT[node.color]:
+#             win_for_parent = 1
+#         elif win_val == node.color:
+#             win_for_parent = -1
+#         elif win_val == -1:
+#             win_for_parent = 0
+#             
+#         node.backpropogate(win_for_parent)
     
     def best_child(self) -> Move:
         '''
@@ -146,7 +174,82 @@ class MCTS():
 
         sorted_moves = sorted(self.root.children.items(), key=lambda x: x[1].visit_count, reverse=True)
         return sorted_moves[0][0]
+    
+    def get_heuristic(self, b, color):
+        '''
+        Evaluates a board and returns a value between 0-1.
+        '''
+        moves_self = b.get_all_possible_moves(color)
+        moves_opp = b.get_all_possible_moves(OPPONENT[color])
+        
+        # There are 4 heuristics that are prioritized in the following order:
 
+        # weighted_piece_score
+        # pawn_position_score
+        # base_piece_score
+        # random
+
+        # weighted_piece_score is the highest priority margin. It attempts to measure the amount of pieces self has vs the 
+        # opponent accounting for kings. Because Board itself doesn't have an attribute for this we assume a piece is a king if it
+        # can make more than 2 moves. This isn't entirely accurate but a piece is worth more if it has more options anyway.
+        weighted_piece_score = 0
+
+        # pawn_position_score is also measured in these for loops. A pawn is worth more if it's closer to the opposing end 
+        # than near the beginning, so we calculate the distance between a pawn and the start of the board in our measurement.
+        # This measurement is unfortunately flawed because a king on the side of the board only has 2 available moves, and
+        # only pieces capable of moving can be accounted for, but there's not much to be done about that.
+        pawn_position_score = 0
+
+        for p in moves_self:
+            if len(p) <= 2:
+                weighted_piece_score += 3
+
+                # An attempt to get the y coordinate of a piece by obtaining the first position on one of Move() objects
+                # for the piece. In theory we are iterating through a list of lists of moves, so p[0] should be a Move(),
+                # p[0].seq should be that Move()'s sequence of coordinates, p[0].seq[0] should be the first coordinate in
+                # that sequence, and p[0].seq[0][1] should be the y coordinate.
+                if len(p):
+                    vertPos = p[0].seq[0][1]
+                    if color == 1:
+                        pawn_position_score += vertPos
+                    else:
+                        pawn_position_score += (b.row - vertPos)
+            else:
+                weighted_piece_score += 5
+
+        for p in moves_opp:
+            if len(p) <= 2:
+                weighted_piece_score -= 3
+                if len(p):
+                    vertPos = p[0].seq[0][1]
+                    if color == 2:
+                        pawn_position_score -= vertPos
+                    else:
+                        pawn_position_score -= (b.row - vertPos)
+            else:
+                weighted_piece_score -= 5
+
+        if weighted_piece_score < 0:
+            weighted_piece_score = 0
+        if pawn_position_score < 0:
+            pawn_position_score = 0
+
+        # base_piece_score is a low priority heuristic, measuring only the amount of pieces on the board without accounting
+        # for weight or position, since trades are good for the player with more pieces.
+        if color == 1:
+            base_piece_score = b.black_count - b.white_count
+        else:
+            base_piece_score = b.white_count - b.black_count
+
+        if base_piece_score < 0:
+            base_piece_score = 0
+        # At the end we multiply the numbers based on their priority and add them so we get a functioning heuristic:
+        # Example score with weighted_score 17, pawn_position_score 25, and base_piece_score 5 would be 172505x, with the
+        # last digit being random
+        total_score = weighted_piece_score * 100000 + pawn_position_score * 1000 + base_piece_score * 10 + randint(0,9)
+        # We then divide it by 10^7 so that it's less than 1, since an un-won board is worth less than a won board:
+        return total_score / 10000000
+    
 class TreeNode():
     def __init__(self, board, color, move, parent):
         self.board = deepcopy(board)

@@ -28,7 +28,7 @@ class StudentAI():
         self.color = 2
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
         self.total_time_remaining = 479
-        self.time_divisor = 0.75 * row * col
+        self.time_divisor = row * col * 0.75
         
     def get_move(self, move) -> Move:
         '''
@@ -55,16 +55,16 @@ class StudentAI():
         moves = self.board.get_all_possible_moves(self.color)
         if len(moves) == 1 and len(moves[0]) == 1:
             self.play_move(moves[0][0], self.color)
-            return moves[0][0]        
+            return moves[0][0]
         
         # set up time limit
         time_limit = self.total_time_remaining / self.time_divisor
         move_chosen = self.mcts.search(time_limit)
         self.play_move(move_chosen, self.color)
         
-        # Get time stamp and deduct from total
-        self.total_time_remaining += time() - start_time
-    
+        self.time_divisor -= 0.25
+        self.total_time_remaining -= time() - start_time
+        
         return move_chosen
     
     def play_move(self, move, color):
@@ -94,7 +94,31 @@ class MCTS():
         timeout = time() + time_limit
                 
         while time() < timeout:
-            self.simulate(self.selection(self.root))
+            # select node from the tree
+            node = self.selection(self.root)
+            # simulate outcome of the game
+            temp_board = deepcopy(node.board)
+            temp_color = node.color
+            win_val = temp_board.is_win(OPPONENT[temp_color])
+            depth_limit = SIMULATION_DEPTH
+            
+            while not win_val and depth_limit:
+                temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
+                win_val = temp_board.is_win(temp_color)
+                temp_color = OPPONENT[temp_color]
+                depth_limit -= 1
+    
+            # reorder these to short circuit most common
+            if not win_val:
+                win_for_parent = -self.get_heuristic(temp_board, node.color)
+            elif win_val == OPPONENT[node.color]:
+                win_for_parent = 1
+            elif win_val == node.color:
+                win_for_parent = -1
+            elif win_val == -1:
+                win_for_parent = 0
+            # update values in tree
+            node.backpropogate(win_for_parent)
 
         return self.best_child()
     
@@ -113,33 +137,33 @@ class MCTS():
                 node.children[move] = TreeNode(node.board, OPPONENT[node.color], move, node)
                 return node.children[move]
                                 
-    def simulate(self, node) -> None:
-        '''
-        Create a copy of the board and simulate a game with random moves.
-        Backpropogates the result at the end of the simulated game.
-        '''
-        temp_board = deepcopy(node.board)
-        temp_color = node.color
-        win_val = temp_board.is_win(OPPONENT[temp_color])
-        depth_limit = SIMULATION_DEPTH
-        
-        while not win_val and depth_limit:
-            temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
-            win_val = temp_board.is_win(temp_color)
-            temp_color = OPPONENT[temp_color]
-            depth_limit -= 1
-
-        # reorder these to short circuit most common
-        if not win_val:
-            win_for_parent = -self.get_heuristic(temp_board, node.color)
-        elif win_val == OPPONENT[node.color]:
-            win_for_parent = 1
-        elif win_val == node.color:
-            win_for_parent = -1
-        elif win_val == -1:
-            win_for_parent = 0
-            
-        node.backpropogate(win_for_parent)
+#     def simulate(self, node) -> None:
+#         '''
+#         Create a copy of the board and simulate a game with random moves.
+#         Backpropogates the result at the end of the simulated game.
+#         '''
+#         temp_board = deepcopy(node.board)
+#         temp_color = node.color
+#         win_val = temp_board.is_win(OPPONENT[temp_color])
+#         depth_limit = SIMULATION_DEPTH
+#         
+#         while not win_val and depth_limit:
+#             temp_board.make_move(get_random_move(temp_board, temp_color), temp_color)
+#             win_val = temp_board.is_win(temp_color)
+#             temp_color = OPPONENT[temp_color]
+#             depth_limit -= 1
+# 
+#         # reorder these to short circuit most common
+#         if not win_val:
+#             win_for_parent = -self.get_heuristic(temp_board, node.color)
+#         elif win_val == OPPONENT[node.color]:
+#             win_for_parent = 1
+#         elif win_val == node.color:
+#             win_for_parent = -1
+#         elif win_val == -1:
+#             win_for_parent = 0
+#             
+#         node.backpropogate(win_for_parent)
     
     def best_child(self) -> Move:
         '''
