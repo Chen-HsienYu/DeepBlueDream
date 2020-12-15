@@ -63,6 +63,20 @@ class StudentAI():
         
         # MCTS
         move_chosen = self.mcts.search(time_limit)
+        
+        
+        
+        
+        for move, node in self.mcts.root.children.items():
+            print(move)
+            print(node.visit_count)
+            print(node.ucb_value)
+            print()
+            
+            
+            
+            
+            
         self.play_move(move_chosen, self.color)
         
         # change time divisor
@@ -213,10 +227,11 @@ class TreeNode():
         (1 is win for the parent, -1 is loss for the parent, 0 is tie,
         decimal values are based on heuristic)
         '''
+        self.visit_count += 1
+        
         if self.parent:
             self.parent.backpropogate(-win_for_parent)
             
-            self.visit_count += 1
             
             if win_for_parent > 0:
                 self.wins_for_parent += win_for_parent
@@ -227,7 +242,7 @@ class TreeNode():
             self.ucb_value = self.wins_for_parent/self.visit_count + C_VAL * sqrt(log(self.parent.visit_count)/self.visit_count)
         
 # REMOVE THIS BEFORE SUBMITTING #
-# if __name__ == '__main__':
-#     import os
-#     os.system('python3 main.py 7 7 2 m main.py')
+if __name__ == '__main__':
+    import os
+    os.system('python3 main.py 7 7 2 m main.py')
 # REMOVE THIS BEFORE SUBMITTING #

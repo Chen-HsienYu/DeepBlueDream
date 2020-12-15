@@ -8,6 +8,7 @@ from operator import attrgetter#, itemgetter
 OPPONENT = {1:2, 2:1}
 C_VAL = sqrt(2) # exploration constant for UCB
 SIMULATION_DEPTH = 60 # max moves for simulated games
+INITIAL_TIME_DIVISOR_C = 0.5
 
 def get_random_move(board, color) -> Move:
     '''
@@ -28,7 +29,8 @@ class StudentAI():
         self.color = 2
         self.mcts = MCTS(TreeNode(self.board, self.color, None, None))
         self.total_time_remaining = 479
-        self.time_divisor = row * col * 0.75
+        self.time_divisor = row * col * INITIAL_TIME_DIVISOR_C
+        self.timed_move_count = 2
         
     def get_move(self, move) -> Move:
         '''
@@ -64,10 +66,12 @@ class StudentAI():
         move_chosen = self.mcts.search(time_limit)
         self.play_move(move_chosen, self.color)
         
-        # decrement time
-        self.time_divisor -= 0.25
-        self.total_time_remaining -= time() - start_time
+        # change time divisor
+        self.time_divisor -= 0.5 - 1/self.timed_move_count
+        self.timed_move_count += 1
         
+        # decrement time remaining and return
+        self.total_time_remaining -= time() - start_time
         return move_chosen
     
     def play_move(self, move, color):
@@ -289,11 +293,11 @@ class TreeNode():
         (1 is win for the parent, -1 is loss for the parent, 0 is tie,
         decimal values are based on heuristic)
         '''
+        self.visit_count += 1
+        
         if self.parent:
             self.parent.backpropogate(-win_for_parent)
-            
-            self.visit_count += 1
-            
+                        
             if win_for_parent > 0:
                 self.wins_for_parent += win_for_parent
             elif not win_for_parent:
