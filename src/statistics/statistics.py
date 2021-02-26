@@ -6,10 +6,6 @@ from collections import defaultdict
 #import time
         
 student = '../checkers-python/main.py'
-no_heuristic = '../no-heuristic/main.py'
-better_timer = '../better-timer/main.py'
-rave = '../rave/main.py'
-
 random = '../../Tools/Sample_AIs/Random_AI/main.py'
 average = '../../Tools/Sample_AIs/Average_AI/main.py'
 good = '../../Tools/Sample_AIs/Good_AI/main.py'
@@ -145,7 +141,6 @@ class GameLogic:
         return self.ai[winPlayer-1]        
 
 if __name__ == "__main__":
-    # Create txt file with unique name (based on date/time) for storing results
     iterations = 1
     
     if len(sys.argv) == 1:
