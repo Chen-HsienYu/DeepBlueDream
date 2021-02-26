@@ -1,6 +1,6 @@
 # DeepBlueDream
 Checkers AI for CS171\
-Running on python/3.5.2\
+Running on python/3.5.2
 ## StudentAI.py
 TO MANUALLY PLAY AGAINST StudentAI:\
 python3 src/checkers-python/main.py {col} {row} {p} m {start_player (0 or 1)}\
