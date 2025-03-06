@@ -8,6 +8,8 @@ We are following the javadoc docstring format which is:
 """
 import os
 import sys
+import sys
+sys.path.append("./src/checkers-python/")
 
 sys.path.append("./Sample_AIs/Random_AI/")
 sys.path.append("./Sample_AIs/Random_AI/AI_Extensions/")
